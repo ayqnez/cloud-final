@@ -13,10 +13,12 @@ fmt:
 	.venv/bin/ruff format . && .venv/bin/ruff check --fix .
 
 build:
-	docker build -t campus-app:dev .
+	python3 scripts/init_local.py
+	docker compose build app
 
 up:
-	docker compose up --build -d
+	python3 scripts/init_local.py
+	docker compose up -d --build --wait
 
 down:
 	docker compose down

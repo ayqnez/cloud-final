@@ -9,12 +9,18 @@ GOOD_KEY = "x" * 40
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
+def app_environment(tmp_path, monkeypatch):
     monkeypatch.setenv("SECRET_KEY", GOOD_KEY)
     monkeypatch.setenv("DB_URL", "sqlite://")
     monkeypatch.setenv("STORAGE_BACKEND", "local")
     monkeypatch.setenv("BUCKET", str(tmp_path / "uploads"))
     monkeypatch.setenv("APP_OWNER", "Test Student 123")
+    monkeypatch.delenv("PASSWORD_MIN_LENGTH", raising=False)
+    monkeypatch.delenv("PASSWORD_REQUIRE_SYMBOL", raising=False)
+
+
+@pytest.fixture
+def client(app_environment):
     with TestClient(create_app()) as c:
         yield c
 
@@ -66,6 +72,30 @@ def test_password_checker(client):
     assert weak["rules"]["not_common"] is False
     assert check_password("Str0ng!Passw0rd#2026")["ok"] is True
     assert check_password("Short1!", min_length=12)["rules"]["min_length"] is False
+
+
+def test_club_password_policy(client):
+    for password, accepted in [
+        ("ClubEvents2026", True),
+        ("ClubEvents202", False),
+        ("clubevents2026", False),
+        ("CLUBEVENTS2026", False),
+        ("ClubEventsOnly", False),
+    ]:
+        result = client.post("/api/admin/check-password", json={"password": password}).json()
+        assert result["min_length"] == 14
+        assert result["require_symbol"] is False
+        assert result["rules"]["has_symbol"] is False
+        assert result["ok"] is accepted
+
+
+def test_stronger_password_policy(app_environment, monkeypatch):
+    monkeypatch.setenv("PASSWORD_REQUIRE_SYMBOL", "true")
+    with TestClient(create_app()) as strict_client:
+        for password, accepted in [("ClubEvents2026", False), ("ClubEvents2026!", True)]:
+            result = strict_client.post("/api/admin/check-password", json={"password": password}).json()
+            assert result["require_symbol"] is True
+            assert result["ok"] is accepted
 
 
 def test_secret_key_required(monkeypatch):

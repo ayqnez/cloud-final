@@ -26,6 +26,8 @@ HOSTNAME = socket.gethostname()
 
 
 class ItemIn(BaseModel):
+    """A club event with a title and an optional description."""
+
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=5000)
 
@@ -212,7 +214,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/admin/check-password")
     def password_policy(body: PasswordIn):
-        return check_password(body.password, settings.password_min_length)
+        return check_password(body.password, settings.password_min_length, settings.password_require_symbol)
 
     return app
 

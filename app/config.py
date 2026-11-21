@@ -35,6 +35,7 @@ class Settings:
     log_level: str
     log_format: str
     password_min_length: int
+    password_require_symbol: bool = False
 
     @property
     def db_engine(self) -> str:
@@ -73,8 +74,12 @@ def load_settings() -> Settings:
     if not bucket:
         raise ConfigError(f"BUCKET is required for STORAGE_BACKEND={backend}")
 
+    symbol_setting = (env("PASSWORD_REQUIRE_SYMBOL", "false") or "").strip().lower()
+    if symbol_setting not in {"true", "yes", "1", "false", "no", "0"}:
+        raise ConfigError("PASSWORD_REQUIRE_SYMBOL must be true or false")
+
     return Settings(
-        app_name=env("APP_NAME", "campus-app"),
+        app_name=env("APP_NAME", "Club events"),
         app_owner=env("APP_OWNER", "unknown student"),
         app_version=env("APP_VERSION", "dev"),
         git_sha=env("GIT_SHA", ""),
@@ -85,5 +90,6 @@ def load_settings() -> Settings:
         secret_key=secret_key,
         log_level=(env("LOG_LEVEL", "INFO") or "INFO").upper(),
         log_format=(env("LOG_FORMAT", "json") or "json").lower(),
-        password_min_length=int(env("PASSWORD_MIN_LENGTH", "12") or 12),
+        password_min_length=int(env("PASSWORD_MIN_LENGTH", "14") or 14),
+        password_require_symbol=symbol_setting in {"true", "yes", "1"},
     )
